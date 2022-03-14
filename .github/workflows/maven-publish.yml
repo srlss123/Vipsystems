@@ -1,31 +1,57 @@
-# This workflow will build a Java project with Maven
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
-
-name: Java CI with Maven for PRs on master
+# This workflow automatically tests new commits and pull requests as they come in.
+# Note that this does not upload any artifacts, you will need to compile mcMMO manually
+# if you wish to create the actual jar.
+name: Compile and test
 
 on:
+  # We run our tests whenever the pom or a source file was touched.
+  # There is no need to run Maven when only the changelog was touched.
+  # We may also want to re-run this workflow when the workflow file itself
+  # was updated too.
+  push:
+    paths:
+    - 'src/**'
+    - 'pom.xml'
+    - '.github/workflows/maven-publish.yml'
+
+  # Whenever someone submits a new pull request which modified the pom or a source file,
+  # we want to ensure it compiles successfully and that all tests will pass.
   pull_request:
-    branches: [ master ]
+    paths:
+    - 'src/**'
+    - 'pom.xml'
 
 jobs:
-  build:
-
+  compile:
+    name: Maven compiler
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up JDK 11
+
+    # 1. Check out the current working tree
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    # 2. Setup Java 17 JDK (Adopt)
+    - name: Java 17 setup
       uses: actions/setup-java@v2
       with:
-        java-version: '11'
         distribution: 'adopt'
-    - name: Build with Maven
-      run: mvn -B package --file pom.xml
-      
-    - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.2.3
-      if: success()
+        java-package: jdk
+        java-version: '17'
+
+    # 3. Setup local Maven package cache to speed up building
+    - name: Cache Maven packages
+      uses: actions/cache@v2
       with:
-        name: GeyserHubMain.jar
-        path: target/*
-        retention-days: 15
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+        restore-keys: ${{ runner.os }}-m2
+
+    # 4. Build via Maven 
+    - name: Build via Maven
+      run: mvn verify -B --file pom.xml
+    - name: capture build artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: Artifacts
+        path: /home/runner/work/*
