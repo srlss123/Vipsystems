@@ -54,4 +54,4 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: Artifacts
-        path: /home/runner/work/*
+        path: /home/runner/work/Vipsystems/Vipsystems/VipSystem-*.jar
